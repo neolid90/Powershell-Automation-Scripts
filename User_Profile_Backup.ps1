@@ -17,15 +17,12 @@ Validates the backup destination path provided (checks if destination folder/Dri
   
 Checks files and folders in the user profile.
 
-Copies user profile data data to the backup path.
-
-
-If you have any suggestions on how to improve this script/process, feel free to contact me. 
-Feedback is always appreciated.
+Copies user profile data to the backup path.
 
 Ruan Nunes
 neolid17@gmail.com
 #>
+
 $ErrorActionPreference='silentlycontinue'
 IF (!([Security.Principal.WindowsPrincipal][Security.Principal.WindowsIdentity]::GetCurrent()).IsInRole([Security.Principal.WindowsBuiltInRole] "Administrator")) { Start-Process powershell.exe "-NoProfile -ExecutionPolicy Bypass -File `"$PSCommandPath`"" -Verb RunAs; exit }
 $Host.UI.RawUI.WindowTitle = "Backup Tool"
@@ -201,13 +198,6 @@ Function BackupDestNotExist
    BackupDestValid
   }
 
-<#Finally {
-
-    Write-Host "Unable to create folder on path provided. Please check if media is available/Has enough space and/or it's not locked by encryption."
-
-    break
-
-}#>
 } #End of Function - BackupDestNotExist#
 
 Function BackupUser
@@ -264,7 +254,7 @@ Your answer'
         }
     }
     
-#Checks if user had Firefox then it copies it.#
+#Checks if user has Firefox intalled then copies it.#
      Write-host `n "Looking for Firefox folders"
      $Search = gci "C:\users\$login\AppData\"
      Foreach ($fold in $Search)
@@ -292,7 +282,7 @@ Your answer'
        }
       }
 
-#Checks if user had Google Chrome then copies it.#
+#Checks if user has Google Chrome Installed then copies it.#
 
      Write-host `n "Looking for Chrome folders"
      $Search = gci "C:\users\$login\AppData\"
@@ -321,7 +311,7 @@ Your answer'
        }
       }
 
-#Checks if user had Internet Explorer data then copies it.#
+#Checks if user has Internet Explorer cache data then copies it.#
 
      Write-host `n "Looking for Internet Explorer folders"
      $Search = gci "C:\users\$login\AppData\"
@@ -359,14 +349,13 @@ Your answer'
      Start-sleep -Seconds 10
      Menu
 
-   } #END of If Yes
+   }
 } #End of Function - BackupUser#
 
 Function Menu
 {
 Do 
-    
-{   CLS 
+{ CLS 
     $input = Read-Host $Options
       Switch($input)
     {
