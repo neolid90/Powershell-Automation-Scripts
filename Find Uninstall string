@@ -1,0 +1,37 @@
+Clear-Host
+$ProgramName=(Read-Host "Enter program name for which you want to find the uninstall String").Trim()
+$productname=@("*$ProgramName*")
+
+$uninstallKeys=
+@('HKLM:\SOFTWARE\Microsoft\Windows\CurrentVersion\Uninstall\','HKLM:\SOFTWARE\WOW6432Node\Microsoft\Windows\CurrentVersion\Uninstall\')
+$uninstallKeys=foreach ($key in (gci $uninstallKeys))
+{
+ foreach ($product in $productname)
+ {
+  if ($key.getvalue("DisplayName") -like "$product")
+  {
+   [pscustomobject]@{
+                     Keyname=$Key.Name.Split("\")[-1];
+                     DisplayName=$Key.getvalue("DisplayName");
+                     UninstallString=$Key.getvalue("UninstallString");
+                     Publisher=$Key.getvalue("Publisher") 
+                    }
+  }
+ }
+}
+
+$numbOf=($uninstallKeys | select Keyname | measure).Count
+if ($numbOf -ge 1)
+{
+ foreach ($app in $uninstallKeys)
+  {
+   write ""`n;
+   $app.DisplayName;
+   $appUnstStrg=(($app.UninstallString).Split("{")[1]).split(" ")[0]
+   $appUnstStrg=$appUnstStrg.Substring(0,$appUnstStrg.Length-1)
+   #$uninst=$app.UninstallString
+   $appUnstStrg
+   & cmd /c "msiexec /x {$appUnstStrg} /qn"
+ }
+
+}
