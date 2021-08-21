@@ -1,0 +1,11 @@
+$credentials=Get-Credential -Credential "$env:USERDOMAIN\$env:USERNAME"
+$RemHst=(Read-host("Enter hostname or its IP address")).Trim();
+$results=Invoke-Command -cn $RemHst -Credential $credentials -script {
+$getProgList=@{
+ Regprog = (Get-ItemProperty HKLM:\SOFTWARE\Microsoft\Windows\CurrentVersion\Uninstall\* | where {$_.DisplayName -ne $null} | select DisplayName,DisplayVersion,Installdate,Publisher,@{Label="Type";Expression={write "x64"}});
+ NonMSIpro =(Get-ItemProperty HKLM:\SOFTWARE\Wow6432Node\Microsoft\Windows\CurrentVersion\Uninstall\* | where {$_.DisplayName -ne $null}| select DisplayName,DisplayVersion,Installdate,Publisher,@{Label="Type";Expression={write "x32"}});
+}
+$allprog = $getProgList.Regprog + $getProgList.NonMSIpro
+$allprog | sort DisplayName
+}
+$results | select DisplayName,DisplayVersion,Installdate,Type
