@@ -1,0 +1,138 @@
+Clear-host;
+$host.ui.RawUI.WindowTitle="Checks if user is locked"
+$Host.UI.RawUI.BackgroundColor = "Black";
+
+function ADUsr
+{
+ Do
+ {
+  clear-host
+  $UserName=([string](Read-Host "Enter a valid username to check if its AD account is locked").Trim())
+  if($UserName -eq '' -or $UserName -eq $null)
+  {
+   write-host -ForegroundColor:Red "`nInput cannot be empty`n";
+   Start-sleep -Seconds 1;
+  }
+  else
+  {
+   $script:UserName=$UserName
+   Get-LockedOutUsr
+   #write-Output $UserName
+  }
+ }
+ while ($UserName -eq '' -or $UserName -eq $null)  
+} <#End of ADUsr Function #> 
+
+function Get-LockedOutUsr
+{
+ $Script:lockedout = Get-ADUser $script:UserName -Properties badpwdcount,Lockedout | select @{Label="User";Expression={$_.Name}},@{Label="Account";Expression={$_.SamAccountName}},Enabled,@{Label="Locked";Expression={$_.Lockedout}},@{Label="Mistyped password counter";Expression={$_.badpwdcount}}
+ if (($lockedout.Locked) -eq $true)
+ {
+  write-host -ForegroundColor:Red "`nAD Account is locked"
+  $Script:lockedout | ft -Wrap
+  $prompt='Do you want to unlock this account?
+
+'
+  $Choices=[System.Management.Automation.Host.ChoiceDescription[]] @('&Yes',' &NO')
+  $Default=1
+  $choice=$Host.UI.PromptForChoice($Title,$prompt,$Choices,$Default)
+  switch($Choice) 
+  { 
+   0{
+      Unlock-ADAccount $lockedout.account
+      write-host -ForegroundColor:Green "`n`nAccount has been unlocked.`n"
+      $Script:lockedout | ft -Wrap
+      PostExec
+    }
+   1{
+     Write-output "`nYou chose Not to unlock this account - User account will stay locked.`n";
+     PostExec
+    }  
+  }
+ } 
+ elseif (($lockedout.Locked) -eq $false)
+ {
+  Write-host -ForegroundColor:Yellow "`nGood news! This account is not locked."
+  $Script:lockedout | ft -Wrap
+  #start-sleep 2
+  PostExec
+ }
+} <#End of main Get-LockedOutUsr Function#>
+
+function PostExec
+{
+ $prompt='Do you want to search for another user account?
+ '
+ $Choices=[System.Management.Automation.Host.ChoiceDescription[]] @('&Yes','&No')
+ $Default=0
+ $choice=$Host.UI.PromptForChoice($Title,$prompt,$Choices,$Default)
+ switch($Choice) 
+ {
+  0 {funcChks}
+  1 {
+     Write-output "`nYou've opted out of searching for other accounts - Closing tool`n";
+     #Set-ExecutionPolicy -executionpolicy restricted -Force;
+     [System.Environment]::Exit(0)
+    }  
+ }
+}
+function funcChks
+{
+ Try
+ {
+  $ErrorActionPreference="Stop" 
+  ADUsr
+ }
+ Catch 
+ {
+  if (($Error[0]).Message -like "*Cannot find an object with identity:*" -or ($Error[0]).Exception -like "*Cannot find an object with identity:*")
+ {
+  write-host -ForegroundColor:Red `n"Username provided could not be found in AD"`n
+  Start-sleep -Seconds 3
+  funcChks
+ }
+  else
+  {
+   write-host -ForegroundColor:Red `n"Oops! Something wrong happened. Let's start over shall we?"`n
+   Start-sleep -Seconds 4
+   funcChks
+  }
+ }
+}
+function Check-Admin 
+{
+ function checkCrntAcct
+ {
+  $CurrentUser=New-Object Security.Principal.WindowsPrincipal $([Security.Principal.WindowsIdentity]::GetCurrent())
+  $CurrentUser.IsInRole([Security.Principal.WindowsBuiltInRole]::Administrator)
+ }
+ $rest=checkCrntAcct
+ if($rest -eq $false)
+ {
+  Clear-Host
+  write-host -ForegroundColor:Red "`nThe account used to run this script does not have AD administrator privileges.`n`nTry running the script again with an AD administrator account.`n`nGoodbye."
+  Start-Sleep -Seconds 8
+  [System.Environment]::Exit(0)
+ }
+ if($rest -eq $true)
+ {
+  try
+  {
+   $ErrorActionPreference="Stop"
+   clear-host
+   Unlock-ADAccount $env:USERNAME
+  }
+  catch
+  {
+   if (($Error[0]).Message -like "*Insufficient access rights to perform the operation*" -or $Error[0] -like "*The server has rejected the client credentials*")
+   {
+    Clear-Host
+    write-host -ForegroundColor:Red "`nAlthough this account has local admin rights, it does not seem to have AD administrator privileges.`n`nTry running the script again with an AD administrator account.`n`nGoodbye."
+    Start-Sleep -Seconds 8
+    [System.Environment]::Exit(0)
+   }
+   else{funcChks}
+  }
+ }
+}
+Check-Admin  
